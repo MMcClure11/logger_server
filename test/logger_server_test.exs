@@ -68,6 +68,19 @@ defmodule LoggerServerTest do
     end
   end
 
+  describe "get_log_by_id/1" do
+    test "returns the correct log for the given id" do
+      LoggerServer.log(:high, "First message")
+      LoggerServer.log(:medium, "Second message")
+
+      assert %{severity: :medium, message: "Second message"} = LoggerServer.get_log_by_id(2)
+    end
+
+    test "returns nil when invalid id given" do
+      refute LoggerServer.get_log_by_id(1)
+    end
+  end
+
   describe "state management" do
     test "maintains separate logs with unique IDs" do
       LoggerServer.log(:high, "Message 1")

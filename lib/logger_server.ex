@@ -20,6 +20,10 @@ defmodule LoggerServer do
 
   def log(_, _), do: {:error, "Severity must be one of #{inspect(@severities)}."}
 
+  def get_log_by_id(id) do
+    GenServer.call(__MODULE__, {:get_log, id})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -41,5 +45,11 @@ defmodule LoggerServer do
     response = %{id: id, message: message}
 
     {:reply, response, new_state}
+  end
+
+  @impl true
+  def handle_call({:get_log, id}, _from, %{logs: logs} = state) do
+    log = Map.get(logs, id)
+    {:reply, log, state}
   end
 end
