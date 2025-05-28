@@ -70,8 +70,8 @@ defmodule LoggerServerTest do
       assert %{severity: :medium, message: "Second message"} = LoggerServer.get_log_by_id(2)
     end
 
-    test "returns nil when invalid id given" do
-      refute LoggerServer.get_log_by_id(1)
+    test "returns error tuple when invalid id given" do
+      assert {:error, :not_found} = LoggerServer.get_log_by_id(1)
     end
   end
 

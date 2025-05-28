@@ -57,8 +57,13 @@ defmodule LoggerServer do
 
   @impl true
   def handle_call({:get_log, id}, _from, %{logs: logs} = state) do
-    log = Map.get(logs, id)
-    {:reply, log, state}
+    result =
+      case Map.get(logs, id) do
+        nil -> {:error, :not_found}
+        log -> log
+      end
+
+    {:reply, result, state}
   end
 
   @impl true
