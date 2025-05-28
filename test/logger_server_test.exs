@@ -1,22 +1,16 @@
 defmodule LoggerServerTest do
   use ExUnit.Case, async: false
+  import ExUnit.CaptureLog
 
   setup do
-    # Stop any existing LoggerServer process
-    if Process.whereis(LoggerServer) do
-      GenServer.stop(LoggerServer)
-    end
-
-    # Start fresh LoggerServer for each test
-    {:ok, pid} = LoggerServer.start_link(nil)
-
-    %{pid: pid}
+    {:ok, _pid} = LoggerServer.start_link(nil)
+    :ok
   end
 
   describe "start_link/1" do
     test "starts with initial state" do
       state = :sys.get_state(LoggerServer)
-      assert state == %{counter: 0, logs: %{}}
+      assert state == %{counter: 0, high_severity_logs: 0, logs: %{}}
     end
   end
 
@@ -64,7 +58,7 @@ defmodule LoggerServerTest do
 
       # State is unchanged
       state = :sys.get_state(LoggerServer)
-      assert state == %{counter: 0, logs: %{}}
+      assert state == %{counter: 0, high_severity_logs: 0, logs: %{}}
     end
   end
 
@@ -78,6 +72,29 @@ defmodule LoggerServerTest do
 
     test "returns nil when invalid id given" do
       refute LoggerServer.get_log_by_id(1)
+    end
+  end
+
+  describe "interval reporting" do
+    test "reports high severity logs and resets the counter" do
+      LoggerServer.log(:high, "Critical failure")
+      LoggerServer.log(:high, "Another issue")
+
+      output =
+        capture_log(fn ->
+          send(LoggerServer, :report_logs)
+          Process.sleep(10)
+        end)
+
+      assert output =~ "There have been 2 high severity messages"
+
+      output2 =
+        capture_log(fn ->
+          send(LoggerServer, :report_logs)
+          Process.sleep(10)
+        end)
+
+      assert output2 =~ "There have been 0 high severity messages"
     end
   end
 

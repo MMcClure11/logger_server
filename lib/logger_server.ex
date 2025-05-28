@@ -4,13 +4,16 @@ defmodule LoggerServer do
   """
   use GenServer
 
+  require Logger
+
   @severities ~w(high medium low)a
+  @interval_seconds 10
 
   # Client
 
   def start_link(_) do
     # use a counter to set id of incoming message
-    state = %{counter: 0, logs: %{}}
+    state = %{counter: 0, high_severity_logs: 0, logs: %{}}
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
@@ -28,6 +31,10 @@ defmodule LoggerServer do
 
   @impl true
   def init(initial_state) do
+    @interval_seconds
+    |> :timer.seconds()
+    |> :timer.send_interval(__MODULE__, :report_logs)
+
     {:ok, initial_state}
   end
 
@@ -39,6 +46,7 @@ defmodule LoggerServer do
       state
       |> put_in([:logs, id], %{severity: severity, message: message})
       |> Map.put(:counter, id)
+      |> maybe_increment_high_severity_logs(severity)
 
     # return the message with its id to the client so the user knows its
     # assigned id
@@ -52,4 +60,22 @@ defmodule LoggerServer do
     log = Map.get(logs, id)
     {:reply, log, state}
   end
+
+  @impl true
+  def handle_info(:report_logs, state) do
+    %{high_severity_logs: log_count} = state
+
+    Logger.info(
+      "There have been #{log_count} high severity messages in the last #{@interval_seconds} seconds."
+    )
+
+    new_state = Map.put(state, :high_severity_logs, 0)
+    {:noreply, new_state}
+  end
+
+  defp maybe_increment_high_severity_logs(state, :high) do
+    Map.update!(state, :high_severity_logs, &(&1 + 1))
+  end
+
+  defp maybe_increment_high_severity_logs(state, _), do: state
 end
